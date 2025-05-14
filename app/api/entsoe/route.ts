@@ -3,9 +3,6 @@ import axios, { AxiosError } from "axios"; // Importer AxiosError
 import { parseEntsoeXML } from "@/lib/xml-parser";
 import { DataTypeOptions, DefaultDomain } from "@/lib/data-types";
 
-// Configure route for dynamic rendering
-export const dynamic = "force-dynamic";
-
 // Environment configuration
 const API_KEY = process.env.ENTSOE_API_KEY || "your-entsoe-api-key";
 const API_BASE_URL = "https://web-api.tp.entsoe.eu/api";
@@ -64,12 +61,9 @@ export async function POST(request: NextRequest) {
       data: parsedData,
     });
   } catch (error: unknown) {
-    // Type de l'erreur en 'unknown'
     console.error("ENTSO-E API error:", error);
 
-    // On vérifie si l'erreur est bien de type AxiosError
     if (axios.isAxiosError(error)) {
-      // On peut accéder à des propriétés spécifiques d'une AxiosError
       let status = 500;
       let message = "An error occurred while fetching data from ENTSO-E API";
 
@@ -84,7 +78,6 @@ export async function POST(request: NextRequest) {
           message = "No data available for the specified criteria";
         }
 
-        // Extraire un message d'erreur détaillé de la réponse XML si disponible
         if (error.response.data && typeof error.response.data === "string") {
           const errorMatch = error.response.data.match(
             /<code>(.*?)<\/code>.*?<message>(.*?)<\/message>/s
@@ -100,7 +93,6 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ success: false, message }, { status });
     } else {
-      // Gérer une erreur inconnue
       return NextResponse.json(
         { success: false, message: "An unexpected error occurred" },
         { status: 500 }
