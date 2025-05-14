@@ -1,96 +1,129 @@
-import { XMLParser } from 'fast-xml-parser';
+import { XMLParser } from "fast-xml-parser";
+
+interface EntsoePoint {
+  documentId: string;
+  documentType: string;
+  createdDateTime: string;
+  businessType: string;
+  curveType: string;
+  timeStart: string;
+  timeEnd: string;
+  resolution: string;
+  date: string;
+  position: number;
+  quantity: number;
+  priceMeasureUnit: string;
+  currencyUnit: string;
+  quantityMeasureUnit: string;
+  inDomain: string;
+  outDomain: string;
+  resourceProvider: string;
+  resourceType?: string;
+  price?: number;
+  timestamp?: Date;
+}
 
 // Configure XML Parser
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "_",
-  isArray: (name) => {
-    // Ensure certain elements are always treated as arrays
-    return [
-      "TimeSeries",
-      "Period",
-      "Point",
-      "MktPSRType",
-      "Reason",
-    ].includes(name);
-  },
+  isArray: (name) =>
+    ["TimeSeries", "Period", "Point", "MktPSRType", "Reason"].includes(name),
 });
 
 /**
- * Parse ENTSO-E XML response to a structured JSON format
- * @param xmlString The XML string response from ENTSO-E API
- * @returns Structured JSON data ready for display and export
+ * Parse ENTSO-E XML response to structured JSON data
  */
-export function parseEntsoeXML(xmlString: string): any[] {
+export function parseEntsoeXML(xmlString: string): EntsoePoint[] {
   try {
-    // Parse XML to JSON
     const parsed = parser.parse(xmlString);
-    
-    // Access the publication document
-    const publication = parsed?.Publication_MarketDocument || 
-                        parsed?.GL_MarketDocument || 
-                        parsed?.Unavailability_MarketDocument ||
-                        parsed?.BalancingMarketDocument;
-    
+
+    const publication =
+      parsed?.Publication_MarketDocument ||
+      parsed?.GL_MarketDocument ||
+      parsed?.Unavailability_MarketDocument ||
+      parsed?.BalancingMarketDocument;
+
     if (!publication) {
-      throw new Error("Invalid XML structure: Cannot find document root");
+      throw new Error("Invalid XML structure: No valid root document found.");
     }
 
-    // Extract common data
     const documentType = publication.type || "Unknown";
     const documentId = publication.mRID || "Unknown";
     const createdDateTime = publication.createdDateTime || "Unknown";
-    
-    // Process time series data - this is where the actual data points are
+
     const timeSeries = publication.TimeSeries || [];
-    
     if (!Array.isArray(timeSeries) || timeSeries.length === 0) {
       return [];
     }
 
-    const formattedData: any[] = [];
-    
-    // Process each time series
+    const formattedData: EntsoePoint[] = [];
+
     timeSeries.forEach((series: any) => {
       const businessType = series.businessType || "Unknown";
       const curveType = series.curveType || "Unknown";
-      const objectAggregation = series.objectAggregation || "Unknown";
-      const inDomain = series.in_Domain?._mRID || "Unknown";
-      const outDomain = series.out_Domain?._mRID || "Unknown";
-      
-      // Process price measures
-      const priceMeasureUnit = series.price_Measure_Unit?.name || "Unknown";
-      const currencyUnit = series.currency_Unit?.name || "Unknown";
-      
-      // Process quantity measures
-      const quantityMeasureUnit = series.quantity_Measure_Unit?.name || "Unknown";
-      
-      // Extract resource provider
-      const resourceProvider = series.resourceProvider?._marketParticipant?.mRID || "Unknown";
-      
-      // Process periods - where the actual data points exist
+      const inDomain =
+        typeof series["in_Domain.mRID"] === "string"
+          ? series["in_Domain.mRID"]
+          : "Unknown";
+      const outDomain =
+        typeof series["out_Domain.mRID"] === "string"
+          ? series["out_Domain.mRID"]
+          : "Unknown";
+      const priceMeasureUnit =
+        typeof series["price_Measure_Unit.name"] === "string"
+          ? series["price_Measure_Unit.name"]
+          : "Unknown";
+      const currencyUnit =
+        typeof series["currency_Unit.name"] === "string"
+          ? series["currency_Unit.name"]
+          : "Unknown";
+      const quantityMeasureUnit =
+        typeof series["quantity_Measure_Unit.name"] === "string"
+          ? series["quantity_Measure_Unit.name"]
+          : "Unknown";
+      const resourceProvider =
+        series.resourceProvider?.marketParticipant?.mRID || "Unknown";
+
+      const resourceType = series.MktPSRType?.[0]?.psrType || undefined;
+
       const periods = series.Period || [];
-      
-      if (!Array.isArray(periods) || periods.length === 0) {
-        return;
-      }
-      
+      if (!Array.isArray(periods) || periods.length === 0) return;
+
       periods.forEach((period: any) => {
         const timeInterval = {
           start: period.timeInterval?.start || "Unknown",
           end: period.timeInterval?.end || "Unknown",
         };
-        
-        const resolution = period.resolution || "Unknown";
+
+        const resolution = period.resolution || "PT60M";
+        const resolutionMap: Record<string, number> = {
+          PT15M: 15,
+          PT30M: 30,
+          PT60M: 60,
+        };
+
+        const resolutionMinutes = resolutionMap[resolution] ?? 60;
+
+        const startTime = new Date(timeInterval.start);
         const points = period.Point || [];
-        
-        if (!Array.isArray(points) || points.length === 0) {
-          return;
-        }
-        
-        // Process each data point
+
+        if (!Array.isArray(points) || points.length === 0) return;
+
         points.forEach((point: any) => {
-          const formattedPoint = {
+          const position = Number(point.position || 0);
+          const quantity = Number(point.quantity || 0);
+          const price =
+            point["price.amount"] !== undefined
+              ? Number(point["price.amount"])
+              : undefined;
+          const timestamp = new Date(
+            startTime.getTime() + (position - 1) * resolutionMinutes * 60000
+          );
+
+          const dateOnly = timestamp.toISOString().slice(0, 10); // Format YYYY-MM-DD
+
+          const formattedPoint: EntsoePoint = {
             documentId,
             documentType,
             createdDateTime,
@@ -98,34 +131,29 @@ export function parseEntsoeXML(xmlString: string): any[] {
             curveType,
             timeStart: timeInterval.start,
             timeEnd: timeInterval.end,
+            date: dateOnly, // champ supplémentaire
             resolution,
-            position: point.position || 0,
-            quantity: point.quantity || 0,
+            position,
+            quantity,
             priceMeasureUnit,
             currencyUnit,
             quantityMeasureUnit,
             inDomain,
             outDomain,
             resourceProvider,
+            price,
+            resourceType,
+            timestamp,
           };
-          
-          // Add optional fields if they exist
-          if (point.price) {
-            formattedPoint["price"] = point.price;
-          }
-          
-          if (series.MktPSRType && series.MktPSRType.length > 0) {
-            formattedPoint["resourceType"] = series.MktPSRType[0].psrType || "Unknown";
-          }
-          
+
           formattedData.push(formattedPoint);
         });
       });
     });
-    
+
     return formattedData;
-  } catch (error) {
-    console.error("Error parsing XML:", error);
+  } catch (error: any) {
+    console.error("❌ Error parsing XML:", error);
     throw new Error(`Failed to parse ENTSO-E XML response: ${error.message}`);
   }
 }

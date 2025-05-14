@@ -1,100 +1,115 @@
 "use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, useTransition } from "react";
+import { format, eachDayOfInterval } from "date-fns";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Calendar as CalendarIcon, Download, DownloadCloud, Zap } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { DataTable } from "@/components/data-table";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { fetchEntsoeDay } from "@/app/actions/fetch-entsoe-day";
 import { DataTypeOptions } from "@/lib/data-types";
-import { useToast } from "@/hooks/use-toast";
 import { exportToExcel } from "@/lib/excel-export";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const formSchema = z.object({
-  startDate: z.date({
-    required_error: "A start date is required",
-  }),
-  endDate: z.date({
-    required_error: "An end date is required",
-  }),
-  dataType: z.string({
-    required_error: "Please select a data type",
-  }),
-}).refine(
-  (data) => {
-    return data.endDate >= data.startDate;
-  },
-  {
-    message: "End date must be after start date",
+import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarIcon, Download, Zap } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { DataTable } from "@/components/data-table";
+
+const formSchema = z
+  .object({
+    startDate: z.date(),
+    endDate: z.date(),
+    dataType: z.string().min(1),
+  })
+  .refine((data) => data.endDate >= data.startDate, {
     path: ["endDate"],
-  }
-);
+    message: "End date must be after start date",
+  });
 
 export function DataFetcher() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [data, setData] = useState<any[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+      startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
       endDate: new Date(),
       dataType: "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
+  const [isPending, startTransition] = useTransition();
+  const [data, setData] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [statusByDay, setStatusByDay] = useState<Record<string, string>>({});
+  const [rawResponses, setRawResponses] = useState<Record<string, string>>({});
+  const { toast } = useToast();
+
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
     setError(null);
-    
-    try {
-      const response = await fetch("/api/entsoe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          startDate: format(values.startDate, "yyyyMMddHHmm"),
-          endDate: format(values.endDate, "yyyyMMddHHmm"),
-          documentType: values.dataType,
-        }),
-      });
+    setData([]);
+    setStatusByDay({});
+    setRawResponses({});
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to fetch data");
+    const days = eachDayOfInterval({
+      start: values.startDate,
+      end: values.endDate,
+    });
+
+    startTransition(async () => {
+      const allData: any[] = [];
+      for (const day of days) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const key = format(day, "yyyy-MM-dd");
+        setStatusByDay((prev) => ({ ...prev, [key]: "loading" }));
+
+        try {
+          const { parsed, raw } = await fetchEntsoeDay(
+            format(day, "yyyyMMdd"),
+            values.dataType
+          );
+          allData.push(...parsed);
+          setRawResponses((prev) => ({ ...prev, [key]: raw }));
+          setStatusByDay((prev) => ({ ...prev, [key]: "success" }));
+        } catch (err: any) {
+          setStatusByDay((prev) => ({ ...prev, [key]: "error" }));
+        }
       }
-
-      const jsonData = await response.json();
-      setData(jsonData.data);
-      
+      setData(allData);
       toast({
-        title: "Data retrieved successfully",
-        description: `Retrieved ${jsonData.data.length} records`,
+        title: "Done",
+        description: `${allData.length} records retrieved.`,
       });
-    } catch (err: any) {
-      setError(err.message || "An error occurred while fetching data");
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || "Failed to fetch data from ENTSO-E API",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
+    });
+  };
 
   const handleExport = () => {
     if (!data || data.length === 0) {
@@ -106,18 +121,13 @@ export function DataFetcher() {
       return;
     }
 
-    const dataType = form.getValues("dataType");
-    const startDate = format(form.getValues("startDate"), "yyyy-MM-dd");
-    const endDate = format(form.getValues("endDate"), "yyyy-MM-dd");
-    
-    const fileName = `entsoe-${dataType}-${startDate}-to-${endDate}.xlsx`;
-    
+    const { startDate, endDate, dataType } = form.getValues();
+    const fileName = `entsoe-${dataType}-${format(
+      startDate,
+      "yyyy-MM-dd"
+    )}-to-${format(endDate, "yyyy-MM-dd")}.xlsx`;
     exportToExcel(data, fileName);
-    
-    toast({
-      title: "Export successful",
-      description: `Data exported to ${fileName}`,
-    });
+    toast({ title: "Exported", description: fileName });
   };
 
   return (
@@ -136,106 +146,90 @@ export function DataFetcher() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Start Date Picker */}
                 <FormField
                   control={form.control}
                   name="startDate"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Start Date</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
-                              variant={"outline"}
-                              className={cn(
-                                "pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
+                              variant="outline"
+                              className={cn("pl-3 text-left font-normal")}
                             >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
+                              {field.value
+                                ? format(field.value, "PPP")
+                                : "Pick a date"}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent>
                           <Calendar
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date("2015-01-01")
-                            }
-                            initialFocus
+                            disabled={(date) => date < new Date("2015-01-01")}
                           />
                         </PopoverContent>
                       </Popover>
-                      <FormDescription>
-                        Select the starting date for your data request
-                      </FormDescription>
+                      <FormDescription>Start date</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
+                {/* End Date Picker */}
                 <FormField
                   control={form.control}
                   name="endDate"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>End Date</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
-                              variant={"outline"}
-                              className={cn(
-                                "pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
+                              variant="outline"
+                              className={cn("pl-3 text-left font-normal")}
                             >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
+                              {field.value
+                                ? format(field.value, "PPP")
+                                : "Pick a date"}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent>
                           <Calendar
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date("2015-01-01")
-                            }
-                            initialFocus
+                            disabled={(date) => date < new Date("2015-01-01")}
                           />
                         </PopoverContent>
                       </Popover>
-                      <FormDescription>
-                        Select the ending date for your data request
-                      </FormDescription>
+                      <FormDescription>End date</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
+                {/* Data Type Select */}
                 <FormField
                   control={form.control}
                   name="dataType"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
                       <FormLabel>Data Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select the type of energy data to retrieve" />
+                            <SelectValue placeholder="Select a data type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -246,28 +240,50 @@ export function DataFetcher() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>
-                        Choose the type of energy data you want to retrieve from ENTSO-E
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              
-              <div className="flex justify-end space-x-4">
-                <Button 
-                  type="submit" 
-                  disabled={isLoading}
-                  className="transition-all duration-200 ease-in-out"
-                >
-                  {isLoading ? "Fetching..." : "Fetch Data"}
+              <div className="flex justify-end">
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? "Fetching..." : "Fetch Data"}
                 </Button>
               </div>
             </form>
           </Form>
         </CardContent>
       </Card>
+
+      {Object.keys(statusByDay).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1">
+              {Object.entries(statusByDay).map(([date, status]) => (
+                <li key={date} className="text-sm">
+                  {`📆 ${date} : `}
+                  {status === "loading" && "⏳"}
+                  {status === "success" && "✅"}
+                  {status === "error" && "❌"}
+                  {rawResponses[date] && (
+                    <details className="ml-2">
+                      <summary className="cursor-pointer text-xs text-blue-600">
+                        View Raw
+                      </summary>
+                      <pre className="max-h-40 overflow-auto bg-gray-100 p-2 text-xs">
+                        {rawResponses[date]}
+                      </pre>
+                    </details>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {error && (
         <Alert variant="destructive">
@@ -276,24 +292,16 @@ export function DataFetcher() {
         </Alert>
       )}
 
-      {data && (
+      {data && data.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex justify-between items-center">
               <span>Results</span>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExport}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                <span>Export to Excel</span>
+              <Button variant="outline" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" /> Export to Excel
               </Button>
             </CardTitle>
-            <CardDescription>
-              {data.length} records retrieved from ENTSO-E
-            </CardDescription>
+            <CardDescription>{data.length} records retrieved</CardDescription>
           </CardHeader>
           <CardContent>
             <DataTable data={data} />
