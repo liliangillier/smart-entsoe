@@ -7,7 +7,7 @@ export default function Home() {
         <header className="text-center mb-10">
           {/* Titre principal */}
           <h1 className="text-5xl font-extrabold text-brand-dark mb-4">
-            Tableau de bord des données énergétiques ENTSO-E
+            Dashboard des données énergétiques ENTSO-E
           </h1>
           <p className="text-muted-foreground text-xl">
             Récupérez, visualisez et exportez les données énergétiques du Réseau
