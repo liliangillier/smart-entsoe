@@ -286,8 +286,14 @@ export function DataFetcher() {
                         </FormControl>
                         <SelectContent>
                           {DataTypeOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
+                            <SelectItem
+                              key={option.value}
+                              value={option.value}
+                              disabled={option.value !== "A44"} // ✅ tout sauf A44 est désactivé
+                            >
                               {option.label}
+                              {option.value !== "A44" && " (bientôt)"}{" "}
+                              {/* Indication visuelle */}
                             </SelectItem>
                           ))}
                         </SelectContent>
