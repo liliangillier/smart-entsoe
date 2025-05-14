@@ -373,6 +373,7 @@ export function DataFetcher() {
               <DayChart
                 day={selectedDayForChart}
                 rawXml={rawResponses[format(selectedDayForChart, "yyyy-MM-dd")]}
+                dataType={form.getValues().dataType} // 👈 ajout ici
                 onClose={() => setSelectedDayForChart(null)}
               />
             </CardContent>

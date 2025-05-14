@@ -14,6 +14,8 @@ import {
   Legend,
 } from "chart.js";
 
+import { fr } from "date-fns/locale";
+
 ChartJS.register(
   LineElement,
   CategoryScale,
@@ -23,15 +25,14 @@ ChartJS.register(
   Legend
 );
 
-import { fr } from "date-fns/locale";
-
 interface Props {
   day: Date;
   rawXml: string;
+  dataType: string;
   onClose: () => void;
 }
 
-export function DayChart({ day, rawXml, onClose }: Props) {
+export function DayChart({ day, rawXml, dataType, onClose }: Props) {
   if (!rawXml) return null;
 
   let parsed;
@@ -46,6 +47,8 @@ export function DayChart({ day, rawXml, onClose }: Props) {
       format(point.timestamp!, "yyyy-MM-dd") === format(day, "yyyy-MM-dd")
   );
 
+  const { label, field } = getLabelAndDataField(dataType);
+
   const chartData = {
     labels: filteredData.map((d) =>
       new Date(d.timestamp!).toLocaleTimeString("fr-FR", {
@@ -55,8 +58,8 @@ export function DayChart({ day, rawXml, onClose }: Props) {
     ),
     datasets: [
       {
-        label: "Prix (€/MWh)",
-        data: filteredData.map((d) => d.price ?? d.quantity),
+        label,
+        data: filteredData.map((d) => d[field as keyof typeof d] ?? 0),
         borderColor: "rgba(75,192,192,1)",
         tension: 0.3,
         pointRadius: 2,
@@ -77,7 +80,7 @@ export function DayChart({ day, rawXml, onClose }: Props) {
         beginAtZero: true,
         title: {
           display: true,
-          text: "€/MWh",
+          text: label,
         },
       },
       x: {
@@ -92,7 +95,7 @@ export function DayChart({ day, rawXml, onClose }: Props) {
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-semibold">
-        Prix spot - {format(day, "PPP", { locale: fr })}
+        {label} – {format(day, "PPP", { locale: fr })}
       </h3>
       <Line data={chartData} options={chartOptions} />
       <div className="flex justify-end">
@@ -100,4 +103,32 @@ export function DayChart({ day, rawXml, onClose }: Props) {
       </div>
     </div>
   );
+}
+
+// Déterminer dynamiquement le label et le champ à afficher selon dataType
+function getLabelAndDataField(type: string) {
+  switch (type) {
+    case "A44":
+      return { label: "Prix (€/MWh)", field: "price" };
+    case "A65":
+      return { label: "Charge totale (MW)", field: "quantity" };
+    case "A69":
+    case "A70":
+    case "A71":
+    case "A74":
+      return { label: "Prévision (MW)", field: "quantity" };
+    case "A72":
+      return { label: "Remplissage (%)", field: "quantity" };
+    case "A73":
+    case "A75":
+    case "A80":
+      return { label: "Production réelle (MW)", field: "quantity" };
+    case "A76":
+    case "A77":
+    case "A78":
+    case "A79":
+      return { label: "Indisponibilité (MW)", field: "quantity" };
+    default:
+      return { label: "Valeur", field: "quantity" };
+  }
 }
