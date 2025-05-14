@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { format, eachDayOfInterval } from "date-fns";
+import { useState, useMemo, useEffect, useTransition } from "react";
+import { format, eachDayOfInterval, addMonths } from "date-fns";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,7 @@ import { DataTypeOptions } from "@/lib/data-types";
 import { exportToExcel } from "@/lib/excel-export";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { fr } from "date-fns/locale"; // Importation de la locale française
 import {
   Card,
   CardContent,
@@ -128,6 +129,49 @@ export function DataFetcher() {
     )}-to-${format(endDate, "yyyy-MM-dd")}.xlsx`;
     exportToExcel(data, fileName);
     toast({ title: "Exporté", description: fileName });
+  };
+
+  const days = eachDayOfInterval({
+    start: form.getValues().startDate,
+    end: form.getValues().endDate,
+  });
+
+  // Calcul des lignes à afficher (un mois par ligne)
+  const getMonths = (days: Date[]) => {
+    const months: Date[][] = [];
+    let currentMonthDays: Date[] = [];
+    let currentMonth = days[0].getMonth();
+
+    days.forEach((day) => {
+      if (day.getMonth() === currentMonth) {
+        currentMonthDays.push(day);
+      } else {
+        months.push(currentMonthDays);
+        currentMonthDays = [day];
+        currentMonth = day.getMonth();
+      }
+    });
+
+    if (currentMonthDays.length > 0) {
+      months.push(currentMonthDays);
+    }
+
+    return months;
+  };
+
+  const months = useMemo(() => getMonths(days), [days]);
+
+  const renderStatusColor = (status: string) => {
+    switch (status) {
+      case "success":
+        return "bg-green-500";
+      case "loading":
+        return "bg-yellow-500";
+      case "error":
+        return "bg-red-500";
+      default:
+        return "bg-gray-300";
+    }
   };
 
   return (
@@ -263,32 +307,47 @@ export function DataFetcher() {
         </CardContent>
       </Card>
 
-      {Object.keys(statusByDay).length > 0 && (
+      {/* Barre d'avancement */}
+      {statusByDay && (
         <Card className="shadow-lg rounded-lg border border-gray-200 p-6">
           <CardHeader>
             <CardTitle>Avancement</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-1">
-              {Object.entries(statusByDay).map(([date, status]) => (
-                <li key={date} className="text-sm">
-                  {`📆 ${date} : `}
-                  {status === "loading" && "⏳"}
-                  {status === "success" && "✅"}
-                  {status === "error" && "❌"}
-                  {rawResponses[date] && (
-                    <details className="ml-2">
-                      <summary className="cursor-pointer text-xs text-blue-600">
-                        Voir les données brutes
-                      </summary>
-                      <pre className="max-h-40 overflow-auto bg-gray-100 p-2 text-xs">
-                        {rawResponses[date]}
-                      </pre>
-                    </details>
-                  )}
-                </li>
+            <div className="space-y-4">
+              {months.map((month, monthIndex) => (
+                <div key={monthIndex}>
+                  <div className="flex items-center justify-between">
+                    {/* Affichage du nom du mois avec première lettre en majuscule */}
+                    <span className="text-lg font-semibold">
+                      {format(month[0], "MMMM", { locale: fr })
+                        .charAt(0)
+                        .toUpperCase() +
+                        format(month[0], "MMMM", { locale: fr }).slice(1)}
+                    </span>
+
+                    {/* Affichage des carrés pour chaque jour du mois */}
+                    <div className="flex gap-2 flex-wrap">
+                      {month.map((day, index) => {
+                        const dayKey = format(day, "yyyy-MM-dd");
+                        const status = statusByDay[dayKey] || "pending";
+                        return (
+                          <div
+                            key={index}
+                            className={`w-6 h-6 rounded-md ${renderStatusColor(
+                              status
+                            )} flex items-center justify-center text-xs text-white`}
+                            title={format(day, "PPP", { locale: fr })}
+                          >
+                            {format(day, "d", { locale: fr })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -305,11 +364,7 @@ export function DataFetcher() {
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
               <span>Résultats</span>
-              <Button
-                variant="outline"
-                onClick={handleExport}
-                className="bg-brand text-white hover:bg-brand-dark focus:ring-2 focus:ring-brand-dark"
-              >
+              <Button variant="outline" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" /> Exporter en Excel
               </Button>
             </CardTitle>
