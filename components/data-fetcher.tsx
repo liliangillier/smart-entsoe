@@ -45,6 +45,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon, Download, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DataTable } from "@/components/data-table";
+import { DayChart } from "./DayChart";
 
 const formSchema = z
   .object({
@@ -72,6 +73,9 @@ export function DataFetcher() {
   const [error, setError] = useState<string | null>(null);
   const [statusByDay, setStatusByDay] = useState<Record<string, string>>({});
   const [rawResponses, setRawResponses] = useState<Record<string, string>>({});
+  const [selectedDayForChart, setSelectedDayForChart] = useState<Date | null>(
+    null
+  );
   const { toast } = useToast();
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -334,10 +338,15 @@ export function DataFetcher() {
                         return (
                           <div
                             key={index}
-                            className={`w-6 h-6 rounded-md ${renderStatusColor(
+                            className={`w-6 h-6 rounded-md cursor-pointer ${renderStatusColor(
                               status
                             )} flex items-center justify-center text-xs text-white`}
                             title={format(day, "PPP", { locale: fr })}
+                            onClick={() => {
+                              if (status === "success") {
+                                setSelectedDayForChart(day);
+                              }
+                            }}
                           >
                             {format(day, "d", { locale: fr })}
                           </div>
@@ -351,6 +360,24 @@ export function DataFetcher() {
           </CardContent>
         </Card>
       )}
+
+      {selectedDayForChart &&
+        rawResponses[format(selectedDayForChart, "yyyy-MM-dd")] && (
+          <Card className="shadow-lg rounded-lg border border-gray-200 p-6">
+            <CardHeader>
+              <CardTitle>
+                Courbe : {format(selectedDayForChart, "PPP", { locale: fr })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DayChart
+                day={selectedDayForChart}
+                rawXml={rawResponses[format(selectedDayForChart, "yyyy-MM-dd")]}
+                onClose={() => setSelectedDayForChart(null)}
+              />
+            </CardContent>
+          </Card>
+        )}
 
       {error && (
         <Alert variant="destructive">
