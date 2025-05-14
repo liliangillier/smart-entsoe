@@ -62,9 +62,9 @@ export function DataFetcher() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      startDate: new Date(),
       endDate: new Date(),
-      dataType: "",
+      dataType: "A44",
     },
   });
 
@@ -209,7 +209,7 @@ export function DataFetcher() {
                               className={cn("pl-3 text-left font-normal")}
                             >
                               {field.value
-                                ? format(field.value, "PPP")
+                                ? format(field.value, "PPP", { locale: fr })
                                 : "Choisir une date"}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -218,6 +218,7 @@ export function DataFetcher() {
                         <PopoverContent>
                           <Calendar
                             mode="single"
+                            locale={fr} // 👈 Ajout ici
                             selected={field.value}
                             onSelect={field.onChange}
                             disabled={(date) => date < new Date("2015-01-01")}
@@ -246,7 +247,7 @@ export function DataFetcher() {
                               className={cn("pl-3 text-left font-normal")}
                             >
                               {field.value
-                                ? format(field.value, "PPP")
+                                ? format(field.value, "PPP", { locale: fr })
                                 : "Choisir une date"}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -255,9 +256,10 @@ export function DataFetcher() {
                         <PopoverContent>
                           <Calendar
                             mode="single"
+                            locale={fr}
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) => date < new Date("2015-01-01")}
+                            disabled={(date) => date < new Date("2015-01-02")}
                           />
                         </PopoverContent>
                       </Popover>
