@@ -22,9 +22,18 @@ export function exportToExcel(data: any[], fileName: string) {
 
     // Write and download the workbook
     XLSX.writeFile(workbook, fileName);
-  } catch (error) {
+  } catch (error: unknown) {
+    // Type de l'erreur en 'unknown'
     console.error("Error export Excel:", error);
-    throw new Error(`Failed to export data to Excel: ${error.message}`);
+
+    // Gérer le cas où l'erreur n'est pas de type Error
+    if (error instanceof Error) {
+      throw new Error(`Failed to export data to Excel: ${error.message}`);
+    } else {
+      throw new Error(
+        "Failed to export data to Excel: An unknown error occurred"
+      );
+    }
   }
 }
 
