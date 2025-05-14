@@ -54,21 +54,21 @@ export function DataTable({ data }: DataTableProps) {
       : [];
 
   const COLUMN_LABELS: Record<string, string> = {
-    timeStart: "Start",
-    timeEnd: "End",
+    timeStart: "Début",
+    timeEnd: "Fin",
     date: "Date",
-    resolution: "Res",
-    position: "Hour",
-    quantity: "Qty (MWh)",
+    resolution: "Rés",
+    position: "Heure",
+    quantity: "Quantité (MWh)",
     price: "€/MWh",
-    priceMeasureUnit: "Price Unit",
-    currencyUnit: "Currency",
-    quantityMeasureUnit: "Qty Unit",
-    inDomain: "In Zone",
-    outDomain: "Out Zone",
-    resourceProvider: "Provider",
-    resourceType: "Type",
-    curveType: "Type",
+    priceMeasureUnit: "Unité de prix",
+    currencyUnit: "Devise",
+    quantityMeasureUnit: "Unité quantité",
+    inDomain: "Dans la zone",
+    outDomain: "Hors zone",
+    resourceProvider: "Fournisseur",
+    resourceType: "Type de ressource",
+    curveType: "Type de courbe",
     timestamp: "Timestamp",
   };
 
@@ -118,26 +118,28 @@ export function DataTable({ data }: DataTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      {/* Barre de recherche */}
+      <div className="flex justify-between items-center mb-4">
         <div className="text-sm text-muted-foreground">
-          Showing {Math.min(filteredData.length, 1 + startIndex)}-
-          {Math.min(filteredData.length, startIndex + itemsPerPage)} of{" "}
-          {filteredData.length} results
+          Affichage {Math.min(filteredData.length, 1 + startIndex)}-
+          {Math.min(filteredData.length, startIndex + itemsPerPage)} de{" "}
+          {filteredData.length} résultats
         </div>
         <div className="w-72">
           <Input
-            placeholder="Search data..."
+            placeholder="Rechercher des données..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="max-w-sm"
+            className="max-w-sm p-2 border rounded-md shadow-sm"
           />
         </div>
       </div>
 
-      <div className="rounded-md border overflow-auto max-h-[500px]">
+      {/* Tableau des données */}
+      <div className="rounded-md border overflow-auto max-h-[500px] shadow-md">
         <ScrollArea className="w-full">
           <Table className="min-w-max table-fixed border-collapse">
             <TableHeader>
@@ -145,7 +147,7 @@ export function DataTable({ data }: DataTableProps) {
                 {columns.map((column) => (
                   <TableHead
                     key={column}
-                    className="sticky top-0 bg-background px-2 py-2 whitespace-nowrap text-left text-sm font-medium"
+                    className="sticky top-0 bg-background px-4 py-3 whitespace-nowrap text-left text-sm font-medium border-b"
                   >
                     {COLUMN_LABELS[column] ?? column}
                   </TableHead>
@@ -157,9 +159,9 @@ export function DataTable({ data }: DataTableProps) {
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="h-24 text-center"
+                    className="h-24 text-center text-gray-500"
                   >
-                    No results found.
+                    Aucun résultat trouvé.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -171,7 +173,7 @@ export function DataTable({ data }: DataTableProps) {
                     {columns.map((column) => (
                       <TableCell
                         key={`${rowIndex}-${column}`}
-                        className="px-2 py-1 text-sm max-w-[140px] truncate whitespace-nowrap"
+                        className="px-4 py-2 text-sm max-w-[140px] truncate whitespace-nowrap"
                         title={String(row[column])}
                       >
                         {typeof row[column] === "number"
@@ -187,6 +189,7 @@ export function DataTable({ data }: DataTableProps) {
         </ScrollArea>
       </div>
 
+      {/* Pagination */}
       {totalPages > 1 && (
         <Pagination>
           <PaginationContent>

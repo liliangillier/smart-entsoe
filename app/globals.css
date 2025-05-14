@@ -43,7 +43,15 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    /* Branding custom colors */
+    --blue-primary: 199, 100%, 44%; /* #009DE0 */
+    --blue-dark: 218, 94%, 22%; /* #04276E */
+
+    --brand: var(--blue-primary);
+    --brand-dark: var(--blue-dark);
   }
+
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -69,6 +77,23 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+  }
+
+  /* Custom Tailwind-like utility classes */
+  .text-brand {
+    color: hsl(var(--brand));
+  }
+
+  .bg-brand {
+    background-color: hsl(var(--brand));
+  }
+
+  .text-brand-dark {
+    color: hsl(var(--brand-dark));
+  }
+
+  .bg-brand-dark {
+    background-color: hsl(var(--brand-dark));
   }
 }
 

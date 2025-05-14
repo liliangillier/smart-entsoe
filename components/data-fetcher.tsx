@@ -53,7 +53,7 @@ const formSchema = z
   })
   .refine((data) => data.endDate >= data.startDate, {
     path: ["endDate"],
-    message: "End date must be after start date",
+    message: "La date de fin doit être après la date de début",
   });
 
 export function DataFetcher() {
@@ -105,8 +105,8 @@ export function DataFetcher() {
       }
       setData(allData);
       toast({
-        title: "Done",
-        description: `${allData.length} records retrieved.`,
+        title: "Terminé",
+        description: `${allData.length} enregistrements récupérés.`,
       });
     });
   };
@@ -115,8 +115,8 @@ export function DataFetcher() {
     if (!data || data.length === 0) {
       toast({
         variant: "destructive",
-        title: "No data to export",
-        description: "Please fetch some data before exporting",
+        title: "Aucune donnée à exporter",
+        description: "Veuillez récupérer des données avant d'exporter",
       });
       return;
     }
@@ -127,32 +127,32 @@ export function DataFetcher() {
       "yyyy-MM-dd"
     )}-to-${format(endDate, "yyyy-MM-dd")}.xlsx`;
     exportToExcel(data, fileName);
-    toast({ title: "Exported", description: fileName });
+    toast({ title: "Exporté", description: fileName });
   };
 
   return (
     <div className="space-y-8">
-      <Card>
+      <Card className="shadow-lg rounded-lg border border-gray-200 p-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-2xl font-semibold text-brand-dark">
             <Zap className="h-5 w-5 text-primary" />
-            Data Request
+            Demande de données
           </CardTitle>
           <CardDescription>
-            Configure your energy data request parameters
+            Configurez vos paramètres pour la récupération des données
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Start Date Picker */}
+                {/* Sélecteur de date de début */}
                 <FormField
                   control={form.control}
                   name="startDate"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Start Date</FormLabel>
+                    <FormItem className="space-y-2">
+                      <FormLabel>Date de début : </FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -162,7 +162,7 @@ export function DataFetcher() {
                             >
                               {field.value
                                 ? format(field.value, "PPP")
-                                : "Pick a date"}
+                                : "Choisir une date"}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -176,18 +176,20 @@ export function DataFetcher() {
                           />
                         </PopoverContent>
                       </Popover>
-                      <FormDescription>Start date</FormDescription>
+                      <FormDescription>
+                        Choisissez la date de début
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                {/* End Date Picker */}
+                {/* Sélecteur de date de fin */}
                 <FormField
                   control={form.control}
                   name="endDate"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>End Date</FormLabel>
+                    <FormItem className="space-y-2">
+                      <FormLabel>Date de fin : </FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -197,7 +199,7 @@ export function DataFetcher() {
                             >
                               {field.value
                                 ? format(field.value, "PPP")
-                                : "Pick a date"}
+                                : "Choisir une date"}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -211,25 +213,27 @@ export function DataFetcher() {
                           />
                         </PopoverContent>
                       </Popover>
-                      <FormDescription>End date</FormDescription>
+                      <FormDescription>
+                        Choisissez la date de fin
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                {/* Data Type Select */}
+                {/* Sélecteur de type de donnée */}
                 <FormField
                   control={form.control}
                   name="dataType"
                   render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Data Type</FormLabel>
+                    <FormItem className="md:col-span-2 space-y-2">
+                      <FormLabel>Type de donnée</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a data type" />
+                            <SelectValue placeholder="Choisir un type de donnée" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -246,8 +250,12 @@ export function DataFetcher() {
                 />
               </div>
               <div className="flex justify-end">
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? "Fetching..." : "Fetch Data"}
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  className="bg-brand text-white hover:bg-brand-dark focus:ring-2 focus:ring-brand-dark"
+                >
+                  {isPending ? "Récupération..." : "Récupérer les données"}
                 </Button>
               </div>
             </form>
@@ -256,9 +264,9 @@ export function DataFetcher() {
       </Card>
 
       {Object.keys(statusByDay).length > 0 && (
-        <Card>
+        <Card className="shadow-lg rounded-lg border border-gray-200 p-6">
           <CardHeader>
-            <CardTitle>Progress</CardTitle>
+            <CardTitle>Avancement</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-1">
@@ -271,7 +279,7 @@ export function DataFetcher() {
                   {rawResponses[date] && (
                     <details className="ml-2">
                       <summary className="cursor-pointer text-xs text-blue-600">
-                        View Raw
+                        Voir les données brutes
                       </summary>
                       <pre className="max-h-40 overflow-auto bg-gray-100 p-2 text-xs">
                         {rawResponses[date]}
@@ -287,21 +295,27 @@ export function DataFetcher() {
 
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Erreur</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {data && data.length > 0 && (
-        <Card>
+        <Card className="shadow-lg rounded-lg border border-gray-200 p-6">
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
-              <span>Results</span>
-              <Button variant="outline" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-2" /> Export to Excel
+              <span>Résultats</span>
+              <Button
+                variant="outline"
+                onClick={handleExport}
+                className="bg-brand text-white hover:bg-brand-dark focus:ring-2 focus:ring-brand-dark"
+              >
+                <Download className="h-4 w-4 mr-2" /> Exporter en Excel
               </Button>
             </CardTitle>
-            <CardDescription>{data.length} records retrieved</CardDescription>
+            <CardDescription>
+              {data.length} enregistrements récupérés
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <DataTable data={data} />

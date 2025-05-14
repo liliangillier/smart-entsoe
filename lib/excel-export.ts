@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
 
 /**
  * Export data to Excel file for download
@@ -9,21 +9,21 @@ export function exportToExcel(data: any[], fileName: string) {
   try {
     // Create a new workbook
     const workbook = XLSX.utils.book_new();
-    
+
     // Create a worksheet from the JSON data
     const worksheet = XLSX.utils.json_to_sheet(data);
-    
+
     // Auto-size columns
     const colWidths = estimateColumnWidths(data);
-    worksheet['!cols'] = colWidths;
-    
+    worksheet["!cols"] = colWidths;
+
     // Add the worksheet to the workbook
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'ENTSO-E Data');
-    
+    XLSX.utils.book_append_sheet(workbook, worksheet, "ENTSO-E Data");
+
     // Write and download the workbook
     XLSX.writeFile(workbook, fileName);
   } catch (error) {
-    console.error('Error exporting to Excel:', error);
+    console.error("Error export Excel:", error);
     throw new Error(`Failed to export data to Excel: ${error.message}`);
   }
 }
@@ -37,28 +37,28 @@ function estimateColumnWidths(data: any[]): { wch: number }[] {
   if (!data || data.length === 0) {
     return [];
   }
-  
+
   // Get column headers
   const headers = Object.keys(data[0]);
-  
+
   // Initialize column widths with header lengths
-  const colWidths = headers.map(header => ({
-    wch: Math.max(10, header.length * 1.2)
+  const colWidths = headers.map((header) => ({
+    wch: Math.max(10, header.length * 1.2),
   }));
-  
+
   // Estimate width based on content (up to first 100 rows for performance)
   const sampleData = data.slice(0, 100);
-  
-  sampleData.forEach(row => {
+
+  sampleData.forEach((row) => {
     headers.forEach((header, index) => {
-      const value = String(row[header] || '');
+      const value = String(row[header] || "");
       const valueLength = value.length * 1.1; // Add a little extra width
-      
+
       if (valueLength > colWidths[index].wch) {
         colWidths[index].wch = Math.min(50, valueLength); // Cap at 50 characters
       }
     });
   });
-  
+
   return colWidths;
 }
