@@ -19,6 +19,13 @@ export default function Home() {
         <div className="space-y-8">
           <DataFetcher />
         </div>
+
+        {/* Footer discret */}
+        <footer className="mt-12 text-center text-sm text-gray-500">
+          <p>
+            Fait par <span className="font-semibold">LG</span>
+          </p>
+        </footer>
       </div>
     </main>
   );
