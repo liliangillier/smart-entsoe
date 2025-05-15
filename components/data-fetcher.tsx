@@ -92,7 +92,7 @@ export function DataFetcher() {
     startTransition(async () => {
       const allData: any[] = [];
       for (const day of days) {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await new Promise((resolve) => setTimeout(resolve, 200));
         const key = format(day, "yyyy-MM-dd");
         setStatusByDay((prev) => ({ ...prev, [key]: "loading" }));
 
@@ -175,6 +175,32 @@ export function DataFetcher() {
         return "bg-red-500";
       default:
         return "bg-gray-300";
+    }
+  };
+
+  const refetchDay = async (day: Date) => {
+    const key = format(day, "yyyy-MM-dd");
+    const formattedDay = format(day, "yyyyMMdd");
+    const dataType = form.getValues().dataType;
+
+    setStatusByDay((prev) => ({ ...prev, [key]: "loading" }));
+
+    try {
+      const { parsed, raw } = await fetchEntsoeDay(formattedDay, dataType);
+      setData((prev) => [...prev, ...parsed]); // ✅ Ajouter les nouvelles données
+      setRawResponses((prev) => ({ ...prev, [key]: raw }));
+      setStatusByDay((prev) => ({ ...prev, [key]: "success" }));
+      toast({
+        title: "Données récupérées",
+        description: `Jour : ${key}`,
+      });
+    } catch (err) {
+      setStatusByDay((prev) => ({ ...prev, [key]: "error" }));
+      toast({
+        variant: "destructive",
+        title: "Erreur lors de la relance",
+        description: `Impossible de récupérer les données pour ${key}`,
+      });
     }
   };
 
@@ -353,6 +379,8 @@ export function DataFetcher() {
                             onClick={() => {
                               if (status === "success") {
                                 setSelectedDayForChart(day);
+                              } else if (status === "error") {
+                                refetchDay(day); // 👈 appel de la relance ici
                               }
                             }}
                           >
