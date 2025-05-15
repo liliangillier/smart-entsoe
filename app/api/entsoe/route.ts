@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       headers: {
         Accept: "application/xml",
       },
-      timeout: 30000, // 30 seconds timeout
+      timeout: 60000, // 30 seconds timeout
     });
 
     // Parse XML response to JSON

@@ -92,7 +92,7 @@ export function DataFetcher() {
     startTransition(async () => {
       const allData: any[] = [];
       for (const day of days) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
         const key = format(day, "yyyy-MM-dd");
         setStatusByDay((prev) => ({ ...prev, [key]: "loading" }));
 
