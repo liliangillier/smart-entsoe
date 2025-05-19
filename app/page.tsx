@@ -25,7 +25,7 @@ export default function Home() {
           <p>
             Fait par <span className="font-semibold">LG</span> –
             <a
-              href="https://github.com/ton-utilisateur/entsoe-dashboard"
+              href="https://github.com/liliangillier/smart-entsoe"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline ml-1"

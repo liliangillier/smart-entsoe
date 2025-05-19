@@ -1,7 +1,6 @@
 # 🌍 ENTSO-E Dashboard
 
-**🔗 Site en ligne : [https://votre-site.com](https://votre-site.com)**  
-**🔗 Code source GitHub : [https://github.com/ton-utilisateur/entsoe-dashboard](https://github.com/ton-utilisateur/entsoe-dashboard)**
+**🔗 Site en ligne : [https://votre-site.com](https://smart-entsoe.vercel.app/)**
 
 Une application web pour récupérer, visualiser et exporter les données énergétiques fournies par l'ENTSO-E (European Network of Transmission System Operators for Electricity).
 
