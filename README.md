@@ -1,6 +1,11 @@
 # 🌍 ENTSO-E Dashboard
 
+**🔗 Site en ligne : [https://votre-site.com](https://votre-site.com)**  
+**🔗 Code source GitHub : [https://github.com/ton-utilisateur/entsoe-dashboard](https://github.com/ton-utilisateur/entsoe-dashboard)**
+
 Une application web pour récupérer, visualiser et exporter les données énergétiques fournies par l'ENTSO-E (European Network of Transmission System Operators for Electricity).
+
+---
 
 ## 🚀 Fonctionnalités
 
@@ -27,19 +32,35 @@ Une application web pour récupérer, visualiser et exporter les données énerg
 
 1. Clone le repo :
 
-```bash
+````bash
 git clone https://github.com/ton-utilisateur/entsoe-dashboard.git
 cd entsoe-dashboard
-```
 
 2. Installe les dépendances :
 
 ```bash
 npm install
-```
+````
 
 3. Démarre le serveur local :
 
 ```bash
 npm run dev
 ```
+
+## 📤 Export Excel
+
+Les données affichées peuvent être exportées en un clic dans un fichier .xlsx avec des colonnes auto-ajustées en largeur.
+
+## 🧪 Exemple de données supportées
+
+Les fichiers XML de l’ENTSO-E peuvent contenir différents types de documents :
+
+- Publication_MarketDocument
+- GL_MarketDocument
+- Unavailability_MarketDocument
+- BalancingMarketDocument
+
+## 👤 Auteur
+
+Projet développé par LG

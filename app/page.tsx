@@ -23,7 +23,15 @@ export default function Home() {
         {/* Footer discret */}
         <footer className="mt-12 text-center text-sm text-gray-500">
           <p>
-            Fait par <span className="font-semibold">LG</span>
+            Fait par <span className="font-semibold">LG</span> –
+            <a
+              href="https://github.com/ton-utilisateur/entsoe-dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline ml-1"
+            >
+              Voir sur GitHub
+            </a>
           </p>
         </footer>
       </div>
