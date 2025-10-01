@@ -12,8 +12,10 @@ import {
   PointElement,
   Tooltip,
   Legend,
+  type ChartData,
+  type ChartOptions,
+  type ChartDataset,
 } from "chart.js";
-
 import { fr } from "date-fns/locale";
 
 ChartJS.register(
@@ -38,7 +40,7 @@ export function DayChart({ day, rawXml, dataType, onClose }: Props) {
   let parsed;
   try {
     parsed = parseEntsoeXML(rawXml);
-  } catch (err) {
+  } catch {
     return <p>❌ Erreur lors du parsing XML</p>;
   }
 
@@ -49,28 +51,34 @@ export function DayChart({ day, rawXml, dataType, onClose }: Props) {
 
   const { label, field } = getLabelAndDataField(dataType);
 
-  const chartData = {
-    labels: filteredData.map((d) =>
-      new Date(d.timestamp!).toLocaleTimeString("fr-FR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    ),
-    datasets: [
-      {
-        label,
-        data: filteredData.map((d) => d[field as keyof typeof d] ?? 0),
-        borderColor: "rgba(75,192,192,1)",
-        // 🔸 Tracé en escalier “x1,y1 -> x2,y1 -> x2,y2”
-        stepped: "after",
-        tension: 0, // pas d’arrondi
-        pointRadius: 2,
-        fill: false,
-      },
-    ],
+  // labels: string[], data: number[]
+  const labels: string[] = filteredData.map((d) =>
+    new Date(d.timestamp!).toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  );
+
+  const series: number[] = filteredData.map((d) =>
+    Number((d as any)[field] ?? 0)
+  );
+
+  const dataset: ChartDataset<"line", number[]> = {
+    label,
+    data: series,
+    borderColor: "rgba(75,192,192,1)",
+    tension: 0, // pas d’arrondi
+    stepped: "after" as const, // palier x1→x2 à y1 puis saut vertical
+    pointRadius: 2,
+    fill: false,
   };
 
-  const chartOptions = {
+  const chartData: ChartData<"line"> = {
+    labels,
+    datasets: [dataset],
+  };
+
+  const chartOptions: ChartOptions<"line"> = {
     responsive: true,
     plugins: {
       legend: { display: true },
@@ -92,7 +100,8 @@ export function DayChart({ day, rawXml, dataType, onClose }: Props) {
       <h3 className="text-xl font-semibold">
         {label} – {format(day, "PPP", { locale: fr })}
       </h3>
-      <Line data={chartData} options={chartOptions} />
+      {/* Typage explicite du composant */}
+      <Line<"line", number[], string> data={chartData} options={chartOptions} />
       <div className="flex justify-end">
         <Button onClick={onClose}>Fermer</Button>
       </div>
