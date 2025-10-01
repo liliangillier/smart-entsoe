@@ -7,7 +7,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fetchEntsoeDay } from "@/app/actions/fetch-entsoe-day";
 import { DataTypeOptions } from "@/lib/data-types";
-import { exportToExcel } from "@/lib/excel-export";
+import { exportEntsoeA44ToExcel } from "@/lib/excel-export";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { fr } from "date-fns/locale"; // Importation de la locale française
@@ -131,7 +131,10 @@ export function DataFetcher() {
       startDate,
       "yyyy-MM-dd"
     )}-to-${format(endDate, "yyyy-MM-dd")}.xlsx`;
-    exportToExcel(data, fileName);
+
+    // Export "propre" : Date/Heure Europe/Paris, secondes = :00, formats Excel natifs
+    exportEntsoeA44ToExcel(data, fileName);
+
     toast({ title: "Exporté", description: fileName });
   };
 
