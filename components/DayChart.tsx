@@ -61,7 +61,9 @@ export function DayChart({ day, rawXml, dataType, onClose }: Props) {
         label,
         data: filteredData.map((d) => d[field as keyof typeof d] ?? 0),
         borderColor: "rgba(75,192,192,1)",
-        tension: 0.3,
+        // 🔸 Tracé en escalier “x1,y1 -> x2,y1 -> x2,y2”
+        stepped: "after",
+        tension: 0, // pas d’arrondi
         pointRadius: 2,
         fill: false,
       },
@@ -71,23 +73,16 @@ export function DayChart({ day, rawXml, dataType, onClose }: Props) {
   const chartOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        display: true,
-      },
+      legend: { display: true },
+      tooltip: { intersect: false },
     },
     scales: {
       y: {
         beginAtZero: true,
-        title: {
-          display: true,
-          text: label,
-        },
+        title: { display: true, text: label },
       },
       x: {
-        title: {
-          display: true,
-          text: "Heure",
-        },
+        title: { display: true, text: "Heure" },
       },
     },
   };
