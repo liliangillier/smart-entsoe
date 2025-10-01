@@ -21,7 +21,7 @@ export function exportEntsoeA44ToExcel(raw: Row[], fileName: string) {
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
-    ["Horodatage", "€/MWh", "Devise", "Unité prix"],
+    ["Horodatage", "€/MWh", "Devise", "Prix"],
   ]);
 
   rows.forEach((r, i) => {
