@@ -2,9 +2,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import axios from "axios";
+import { headers } from "next/headers";
 
-/** Récupère Y-M-D-H-m en Europe/Paris (minute arrondie au quart d’heure) */
+/** Europe/Paris → Y-M-D-H-m (minute arrondie au quart d’heure) + offset minutes */
 function getParisYMDHM(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Paris",
@@ -17,26 +17,22 @@ function getParisYMDHM(now = new Date()) {
     timeZoneName: "short",
   }).formatToParts(now);
 
-  const get = (t: string) => parts.find((p) => p.type === t)?.value!;
+  const get = (t: string) => parts.find((p) => p.type === t)!.value;
   const y = Number(get("year"));
   const m = Number(get("month"));
   const d = Number(get("day"));
   const h = Number(get("hour"));
   const miRaw = Number(get("minute"));
-
-  // arrondi au quart d’heure inférieur
   const mi = Math.floor(miRaw / 15) * 15;
 
-  // détection de l’offset via GMT+X
   const tzName = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT+0";
   const match = tzName.match(/([+\-]\d{1,2})/);
-  const offsetHours = match ? Number(match[1]) : 0;
-  const offsetMinutes = offsetHours * 60;
+  const offsetMinutes = (match ? Number(match[1]) : 0) * 60;
 
   return { y, m, d, h, mi, offsetMinutes };
 }
 
-/** yyyyMMddHHmm (UTC) pour ENTSO-E */
+/** yyyyMMddHHmm (UTC) attendu par ENTSO-E */
 function toEntsoeUTC(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
@@ -50,7 +46,7 @@ function toEntsoeUTC(d: Date) {
 
 export async function GET() {
   try {
-    // ---- Étape 1 : Récupération des données du jour (A44) ----
+    // Fenêtre jour UTC [00:00 → +1j 00:00]
     const now = new Date();
     const dayStartUTC = new Date(
       Date.UTC(
@@ -68,14 +64,37 @@ export async function GET() {
     const endDate = toEntsoeUTC(nextDayUTC);
     const documentType = "A44";
 
-    const resp = await axios.post(
-      "http://localhost:3000/api/entsoe",
-      { startDate, endDate, documentType },
-      { timeout: 20000 }
-    );
+    // Origin dynamique (local/prod)
+    const h = await headers(); // 👈 IMPORTANT
+    const host =
+      h.get("x-forwarded-host") ??
+      h.get("host") ??
+      process.env.VERCEL_URL ??
+      "localhost:3000";
+    const proto =
+      h.get("x-forwarded-proto") ??
+      (host.startsWith("localhost") ? "http" : "https");
+    const origin = `${proto}://${host}`;
 
+    // Appel de ta route POST /api/entsoe (proxy sécurisé)
+    const respFetch = await fetch(`${origin}/api/entsoe`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ startDate, endDate, documentType }),
+      cache: "no-store",
+    });
+
+    if (!respFetch.ok) {
+      const body = await respFetch.text().catch(() => "");
+      return NextResponse.json(
+        { error: "Upstream /api/entsoe KO", status: respFetch.status, body },
+        { status: 502, headers: { "Access-Control-Allow-Origin": "*" } }
+      );
+    }
+
+    const upstream = await respFetch.json();
     const points: Array<{ timestamp: string; price: number }> =
-      resp.data?.data ?? [];
+      upstream?.data ?? [];
     if (!Array.isArray(points) || points.length === 0) {
       return NextResponse.json(
         { error: "Aucune donnée disponible" },
@@ -83,15 +102,13 @@ export async function GET() {
       );
     }
 
-    // ---- Étape 2 : Détermination du quart d’heure courant Europe/Paris ----
-    const { y, m, d, h, mi, offsetMinutes } = getParisYMDHM(now);
-
-    // Conversion du slot Paris vers UTC
+    // Slot courant Europe/Paris → UTC
+    const { y, m, d, h: hh, mi, offsetMinutes } = getParisYMDHM(now);
     const slotUtcMs =
-      Date.UTC(y, m - 1, d, h, mi, 0, 0) - offsetMinutes * 60_000;
+      Date.UTC(y, m - 1, d, hh, mi, 0, 0) - offsetMinutes * 60_000;
     const slotUtcISO = new Date(slotUtcMs).toISOString();
 
-    // ---- Étape 3 : Matching sur le timestamp ENTSO-E ----
+    // Matching strict puis tolérance ±60s
     const match =
       points.find((p) => p.timestamp === slotUtcISO) ??
       points.find(
@@ -102,13 +119,14 @@ export async function GET() {
       return NextResponse.json(
         {
           error: "Slot courant introuvable",
-          debug: { slotUtcISO, paris: { y, m, d, h, mi, offsetMinutes } },
+          slotUtcISO,
+          paris: { y, m, d, hh, mi, offsetMinutes },
         },
         { status: 502, headers: { "Access-Control-Allow-Origin": "*" } }
       );
     }
 
-    // Slot local lisible
+    // Lisible en Europe/Paris
     const slotLocal = new Intl.DateTimeFormat("sv-SE", {
       timeZone: "Europe/Paris",
       year: "numeric",
@@ -122,13 +140,14 @@ export async function GET() {
       .format(new Date(slotUtcMs))
       .replace(" ", "T");
 
-    // ---- Étape 4 : Enrichissement debug et sortie ----
-    const prev = points.find(
-      (p) => new Date(p.timestamp).getTime() === slotUtcMs - 15 * 60_000
-    );
-    const next = points.find(
-      (p) => new Date(p.timestamp).getTime() === slotUtcMs + 15 * 60_000
-    );
+    const prev =
+      points.find(
+        (p) => new Date(p.timestamp).getTime() === slotUtcMs - 15 * 60_000
+      ) ?? null;
+    const next =
+      points.find(
+        (p) => new Date(p.timestamp).getTime() === slotUtcMs + 15 * 60_000
+      ) ?? null;
 
     return NextResponse.json(
       {
